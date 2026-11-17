@@ -1,0 +1,154 @@
+https://github.com/aiops-02
+
+setup
+======
+Domain purchase
+AWS CLI V2
+Terraform
+Git bash -> for good colors in terraform
+IAM user -> admin access
+then run aws configure
+
+hostinger -> temp purpose -> cheap cost
+go daddy -> perm domain
+
+domain should be transferred to AWS, because our entire infra is here, we can easily update records through IaaC
+
+domain authorisation transfer
+============================
+create hosted zone in Route 53, we will get NS records here. update these records into hostinger
+
+expense application
+===================
+VPC, Public subnets
+3 VM -> MySQl, Backend, Frontend
+ALB with https
+
+route53
+======
+backend.daws88s.online
+mysql.daws88s.online
+frontend.daws88s.online
+expense.daws88s.online -> ALB URL
+
+What is wrong?
+Why is it wrong?
+
+Application
+Where application is running?
+What application is doing?
+
+BP, Sugar, Height, Weight, temperature, etc..
+tests
+
+Doctor will us what's wrong and why is it wrong?
+
+Metrics Logs and Traces
+=======================
+
+Metrics -> What is wrong?
+application emits some information continously and underlying infra also, we need to store and analyse trend. We cant do anything with present value
+
+
+We continously get the data/metrics from underlying infra and then application to analyse the trend...
+
+Push vs Pull
+============
+Push -> When there is event we get notification or data
+Pull -> We continously get data periodically every 15sec.
+
+Observability needs pull model when there is need for complete data for analysing the trend
+
+When push model is valid?
+=========================
+if there is a job that runs only for short time say 5sec. -> application send the data to push gateway when job is completed
+
+when networking rules are strict.
+
+server -> app. app should allow monitoring server to connect on particular port.
+app -> server. outbound/ingress. 
+
+Metrics collection Prometheus
+
+agent model
+===========
+Targets -> Servers/applications from which we need data/metrics. We have various kinds of platforms and applications
+
+It is impossible for prometheus to contact targets directly and get the data in prometheus format
+
+exporters -> are like agents that runs along side of target. prometheus contacts exporters then exporters read the information from targets and updates to prometheus
+
+every 15sec
+=============
+prometheus -> agent/exporters -> read the data from targets -> convert into prometheus format -> send it to prometheus
+
+TSDB -> Time series database
+Prometheus stores metrics against timestamp
+
+There is only one real thing in universe. that is time. remaining everything are illusion
+
+metrics/data is bound to timestamp
+120/80 130/90 		140/100
+now		15sec back	30sec back
+
+date/timestamp, food/travel/movie how much?
+PromQL -> Prometheus Query language
+
+4 golden siganls by Google
+
+LETS
+====
+Latency -> How much time a request took
+Errors -> are there any errors
+Traffic -> How many requests are coming to server
+Saturation -> What about server resources (CPU, HD, RAM, Bandwidth). are these resources saturated
+
+AMI = ami-0055977a6e828a4f4
+joindevops customised ami
+
+ec2-user
+DevOps321
+RHEL-9
+us-east-1
+
+prometheus
+==========
+t3.small
+ami-0055977a6e828a4f4
+ec2-user
+DevOps321
+expense-vpc
+default SG
+50GB
+
+Prometheus
+============
+/opt/prometheus -> prometheus artifact
+/etc/prometheus/prometheus.yaml -> prometheus configuration
+/var/lib/prometheus -> prometheus data storage
+
+system user prometheus is going to run prometheus software
+
+up{app="prometheus", instance="localhost:9090", job="prometheus"} 1
+bp{person="ramesh", city="hyderabad"} 120/80 @09:19PM
+
+node_exporter -> install inside server to fetch server metrics
+
+if we want node_exporter metrics in particular server
+
+http://IP:9100/metrics
+
+metric_name{key-1="value-1", key-2="value-2"} <sample-value>
+
+http://10.0.1.187:9100/metrics
+
+mysql should allow 9100 from all(prometheus server)
+
+Push vs Pull
+Why metrics are important
+Install prometheus
+Install node exporter in MySQL server
+add it as target in prometheus configuration
+
+check the metrics
+
