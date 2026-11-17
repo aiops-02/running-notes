@@ -1,0 +1,93 @@
+prometheus is TSDB -> Timeseries Database
+metrics
+prometheus stores metrics about our infra, application
+metrics tell us what is wrong, logs and traces tell us why is it wrong?
+
+prometheus follows pull model to scrape the targets for metrics periodically.
+exporter is a small agentic program that read the target metrics, convert them into prometheus way and respond to prometheus pull requests with data
+
+target end point: http://localhost:9100/metrics
+
+http: scheme -> http/https
+localhost:9100 -> address
+/metrics -> path
+
+Service Discovery
+=================
+A mechanism prometheus find the targets dynamically.
+
+EC2 instance. It should have exporters installed
+
+EC2 Service discovery. Prometheus should connect with EC2 API
+
+prometheus should have permission describe EC2 instances.. describe availability zone.
+
+filter with running instances, filter with tag Monitoring as true. filter with name as mysql.
+
+v1.2
+====
+backend, mysql, frontend will be created with application and exporters
+prometheus server with IAM Role has access to describe EC2 instances.. describe availability zone
+
+I need to configure EC2 SD.
+
+Relabel configs
+================
+prometheus treats targets as set of labels. Prometheus can do a list of edits before scraping the targets. 
+
+up{instance="mysql"}
+
+1. identify the targets
+2. scrape the metrics
+3. store the metrics
+4. alerts
+
+service discovery will give some metadata labels along with targets. prometheus can use those labels or drop them
+
+a label start __ is a scrape setting, prometheus uses it to build the metric then it throws away..
+
+a label does not start with __ goes into metrics
+
+
+- job_name: "node"
+    ec2_sd_configs:
+      - region: us-east-1
+        port: 9100
+        filters:
+          - name: tag:Monitoring
+            values: ["true"]
+    relabel_configs:
+      # no keep rule: every Monitoring=true instance is a node target
+      # --- labels on every series (instance stays <private-ip>:9100) ---
+      - source_labels: [__meta_ec2_tag_Tier]
+        target_label: tier
+      - source_labels: [__meta_ec2_tag_Component]
+        target_label: component
+      - source_labels: [__meta_ec2_tag_Project]
+        target_label: project
+      - source_labels: [__meta_ec2_tag_Environment]
+        target_label: env
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: name
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: az
+		
+backend -> get all the running instances with monitoring true, get tier backend -> 1
+
+before scrapping the targets from service discovery, prometheus applies relabel_configs as rules 1 by 1
+
+metric_relabel_configs -> after scrapping the targets.
+
+white box monitoring and black box monitoring
+=============================================
+white box monitoring -> we know about sytem internals.
+black box monitoring -> not knowing about system internals. but we know something like website is working or not. DNS is resolving or not. certificate details. how much time it is taking to respond. 
+
+medical device
+===============
+service discovery -> targets list
+relabel_configs -> before scrapping
+
+scrape targets -> huge information -> relabel_configs
