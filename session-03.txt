@@ -1,0 +1,248 @@
+facts
+======
+-> in terms of prometheus every target is a set of labels
+
+-> any label starts with __ prometheus uses for scrape settings, then it will remove it. if we want to keep we should copy this to normal label
+
+group of labels
+================
+
+group-1: labels that builds the request
+Discovered labels: service discover gave these labels
+
+target URL: http://<exporter-ip>:<port-no>/metrics
+
+__scheme__ -> http/https -> default is http
+__address__ -> IP:port   -> targets will set the address in YAML
+__metrics_path__ -> /metrics -> metrics_path in YAML
+__scrape_interval__ -> 15sec by default -> global config in YAML
+__scrape_timeout__ -> "10s" by default -> global config in YAML
+__param_name__key -> value
+
+labels that helps prometheus to builds the requests
+http://10.0.2.200:9101/metrics?key=value
+
+group-2: helper labels
+======================
+__meta* -> from service discovery
+usually deleted after scrapping, but we can relabel them into normal labels to keep inside the sample through relabel_configs
+
+group-3: prometheus adds automatically
+======================
+job -> job_name
+instance -> __address__
+
+group-4: only after the scrape
+============================
+go_sched_gomaxprocs_threads 1
+go_threads 5
+
+__name__ -> every metric name after the scrapping
+
+process_resident_memory_bytes
+metric_relable_configs:
+- source_labels: [__name__]
+  regex: "go_gc.*"
+  action: drop
+  
+group-5: metrics prometheus create for every target
+=========================
+up
+scrape_duration_seconds
+scrape_samples_scraped
+scrape_*
+
+prometheus adds up metric, if prometheus is able to reach exporter then it means it is up, otherwise its value is 0
+
+white box monitoring vs black box monitoring
+============================================
+white box -> knowing the system internals, we run exporters along with targets. we scrape metrics and analyse
+
+black box -> we dont know system internals. actually we dont care. we dont have any details. is the application running or not?
+
+we can check SSL certificate is valid or not? is going to expire or not?
+we can check http -> https or not?
+application is responding or not
+DNS query is resolving or not
+
+everything is module inside black box monitoring
+prober -> http/https, DNS, TCP, ICMP(ping)
+
+each module does one work
+http_2xx: -> getting response from a website within 5 sec or not
+
+https_2xx: this will check if the certificate is valid or not, expiry or not, certificate exists or not
+
+http_redirects_to_https -> http to https redirecting or not
+
+DNS
+====
+DNS resolver -> 8.8.8.8(Google), 1.1.1.1(Cloudfare)
+which domain -> expense.daws88s.online
+
+usually DNS resolver is setup by ISP
+
+public hosted zone
+private hosted zone(internal)
+
+backend.daws88s.online -> 
+mysql.daws88s.online -> 
+
+we should have prometheus configuration to ask black box exporter periodically
+
+- job_name: blackbox_http
+    metrics_path: /probe
+    static_configs:
+      - targets: [https://expense.daws90s.shop]
+        labels: { probe: alb, module: https_2xx }
+      - targets: [http://expense.daws90s.shop]
+        labels: { probe: alb_redirect, module: http_redirects_to_https }
+    relabel_configs:
+      - source_labels: [__address__]       # (1) website -> ?target=
+        target_label: __param_target
+      - source_labels: [module]            # (2) module label -> &module=
+        target_label: __param_module
+      - source_labels: [__param_target]    # (3) readable instance label
+        target_label: instance
+      - target_label: __address__          # (4) connect to the exporter (must be LAST)
+        replacement: localhost:9115
+		
+job = blackbox_http
+metrics_path= /probe
+rule-1
+======
+__address__ = https://expense.daws90s.shop
+probe: alb, module: https_2xx -> these labels are going to store in samples
+
+rule-2
+======
+__param_target = https://expense.daws90s.shop
+module = https_2xx
+__param_module = https_2xx
+
+rule-3
+======
+instance = https://expense.daws90s.shop
+__param_target= https://expense.daws90s.shop
+
+rule-4
+======
+__address__ = localhost:9115
+__param_target= https://expense.daws90s.shop
+instance = https://expense.daws90s.shop
+__param_module = https_2xx
+job = blackbox_http
+metrics_path= /probe
+scheme =  localhost:9115
+
+http://localhost:9115/probe?target=https://expense.daws90s.shop&module=https_2xx
+
+
+- job_name: blackbox_dns
+    metrics_path: /probe
+    static_configs:
+      # Public resolver — what users see
+      - targets: [8.8.8.8]
+        labels: { resolver: public, module: dns_expense_a, record: expense.daws90s.shop }
+      # Amazon VPC resolver — what the app VMs see
+      - targets: [169.254.169.253]
+        labels: { resolver: vpc, module: dns_expense_a, record: expense.daws90s.shop }
+      - targets: [169.254.169.253]
+        labels: { resolver: vpc, module: dns_frontend_a, record: frontend.daws90s.shop }
+      - targets: [169.254.169.253]
+        labels: { resolver: vpc, module: dns_backend_a, record: backend.daws90s.shop }
+      - targets: [169.254.169.253]
+        labels: { resolver: vpc, module: dns_mysql_a, record: mysql.daws90s.shop }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [module]
+        target_label: __param_module
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+		
+job: blackbox_dns
+metrics_path: /probe
+__address__ = 8.8.8.8
+labels:
+ resolver: public
+ module: dns_expense_a
+ record: expense.daws90s.shop
+ 
+RULE-1
+======
+__address__ = 8.8.8.8
+__param_target = 8.8.8.8
+
+RULE-2
+======
+__param_module = dns_expense_a
+
+RULE-3
+=====
+instance = 8.8.8.8
+
+RULE-4
+======
+__address__ = localhost:9115
+instance = 8.8.8.8
+__param_module = dns_expense_a
+__param_target = 8.8.8.8
+record: expense.daws90s.shop
+
+http://localhost:9115/probe?target=8.8.8.8&module=dns_expense_a
+
+Metric Types
+============
+data types -> int, string, float, list, boolean
+
+1. counter
+2. gauge
+3. histogram
+4. summary
+
+car
+=====
+trip -> odometer
+
+counter -> continously increasing it never reduces
+
+age, odometer, data -> counter (always increase)
+
+month end -> data reset to 0
+odomoter trip ends it becomes 0
+
+counter metrics can be reset to 0
+
+speed -> 85km/hr
+gauge -> current value reduces or increases -> what is the value right now
+
+
+http_requests -> counter
+reset to 0 when app restarts
+
+memory_available -> gauge
+
+histogram
+============
+
+percentile
+
+100 members
+
+write the marks in the ascending order by a candidates
+
+10	15	20	25 26 				81 87 85
+
+How many persons he beat = his percentile = 98/97 = rank -> 3
+
+459490
+
+
+https://expense.daws88s.online/
+
+curl https://expense.daws88s.online/
+
+promhttp_metric_handler_requests_total{code="503"} 0
