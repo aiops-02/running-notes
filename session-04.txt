@@ -1,0 +1,119 @@
+1. counter -> always increasing, reset to 0 when restarts
+2. gauge -> instant value
+3. histogram -> percentiles will be calculated by prometheus 
+4. summary -> percentiles will be calculated by applications(dont use)
+
+http_request_duration_seconds -> 
+0.04
+0.06
+
+99% of requests should be served in 500ms
+p99.5
+p99
+p95
+p50
+
+prometheus values are
+
+1. instant vector -> current value
+vector will have direction. metric -> value
+
+2. range vector -> over the time
+sample over the time
+
+http_requests_total[1m]
+
+3. scalar. simply a value. like time(), 100, 200. used in calculations
+
+PromQL
+======
+http_requests_total{az="us-east-1b", component="expense-service", env="lab", instance="10.0.2.246:9101", instance_id="i-089ac00ff7ebca102", job="backend", method="GET", name="expense-backend", project="expense", route="/api/auth/me", status_code="401", tier="backend"}
+
+metric_name {set of labels} value
+matchers:
+========
+=
+!=
+http_requests_total{status_code=~"4.."}
+
+http_requests_total{status_code!~"4..|5.."} -> requests count for status code which are not either 4XX or 5XX
+
+http_requests_total{route !~ "/api/auth.*"} -> requests with routes except "/api/auth.*"
+
+functions
+==========
+rate functions
+
+http_requests_total 
+
+100GB 110GB 135GB 160GB 180GB
+
+80/4 -> 20GB/day
+rate(data_consumption[4 days]) -> 180-100/4 -> 20GB/day
+
+counter metric will not give the rate of increase.
+1000
+1500 
+
+rate() usually rate means per sec
+
+rate(http_requests_total[20m]) -> in last 20min what are the requests per sec.
+using rate functions, we can identify the spikes
+
+increase function
+increase(http_requests_total[20m]) -> present value - 20m back value
+irate -> difference b/w last 2 samples -> zoom in the metrics where we exactly got the hike or less
+present value - 15 sec back value
+reset() -> when counter value is reset it becomes 0. when application is restarted
+
+100 120 130 0 12 14 16
+
+/api/expense GET 1200
+/api/expense GET 2
+
+/auth/signup POST 100
+/auth/signup POST 100
+
+resets(http_requests_total[50m]) 2 -> app was reset 2 times in last 50min
+
+BASE_URL=https://expense.daws88s.online VUS=20 DURATION=600 ERRORS=1 node loadtest/expense-load.mjs
+
+aggregators -> sum by min max avg count
+
+sum(rate(http_requests_total[5m])) -> total requests per/sec in last 5min
+
+sum by (route, method) (rate(http_requests_total[5m])) -> sum of request per sec group by route and method
+
+sum without (method, route) (rate(http_requests_total[5m])) -> opposite to by
+
+topk(3, sum by (route) (rate(http_requests_total[5m]) )
+
+topk(3, sum by (route, method) (rate(http_requests_total[5m]) )) -> 3 busiest routes and methods in last 5min
+
+avg aggregators
+==============
+node_cpu_seconds_total -> CPU metric
+
+node_cpu_seconds_total{tier="db", cpu="0"} -> 1st core of mysql server, idle means free time, except idle remaining means busy
+
+rate(node_cpu_seconds_total{tier="db", mode="idle"}[5m]) -> in last 5min per sec fraction
+
+CPU utilisation
+==============
+100 - (avg by (tier) (rate(node_cpu_seconds_total{mode="idle"}[60m]) * 100))
+
+topk(2, 100 - (avg by (tier) (rate(node_cpu_seconds_total{mode="idle"}[5m]) * 100))) -> top2 busiest servers
+
+http_requests_total -> 200, 201, 300, 301, 304, 400, 401
+
+count by (tier) (up{job="node"}) -> count of servers by tier
+
+gauge
+=====
+
+
+histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) -> 95% of the requests duration in lsat 5min
+
+time taken by overall reqeuests/total number of requests
+
+sum(rate(http_request_duration_seconds_sum[5m]))/sum(rate(http_request_duration_seconds_count[5m])) -> avg latency
