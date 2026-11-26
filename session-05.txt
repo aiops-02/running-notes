@@ -1,0 +1,72 @@
+Metrics Logs Traces
+
+Collection -> Storage -> Analysis/Visualise -> Troubleshooting
+
+Metrics
+=======
+Discovering the targets(SD) -> Relabelling -> Scrapping the targets -> Metrics relabelling -> Storage
+
+https://github.com/aiops-02/expense-infra-vm-v1.3.git
+
+3 EC2, ALB -> exporters -> node, mysql, nginx, custom app metrics
+/metrics
+
+1 monitoring -> prometheus, black box exporter, prometheus.yaml to service discovery including black box
+
+grafana -> Visualisation tool
+
+Metric types
+============
+Counter -> Always increasing, reset to 0 whenever restart happens
+Gauge -> high/low
+Histogram -> seperate buckets, based on the metric value prometheus keep it in sep buckets. prometheus calculates percentile based histogram buckets
+Summary -> app itself calculates summary
+
+values
+=====
+instant vector
+range vector[5m]
+scalar -> 100, time()
+string -> practically nowhere used
+
+BASE_URL=https://expense.daws90s.shop VUS=20 DURATION=600 ERRORS=1 node loadtest/expense-load.mjs
+
+functions
+==========
+rate(metric_name[5m])
+5min before -> x
+now -> y
+
+y-x
+---
+5*60
+
+matchers
+=======
+=, !=, =~, !~
+
+0.00
+
+grafana
+======
+it can connect with many datasources. prometheus is one of the data source.
+
+dashboard
+- Visualisation -> What is the type of visulisation
+
+sum(rate(metric[30m]))
+
+timeseries -> most common, X axis time, Y axis value
+stat -> count
+gauge -> speedometer (present value)
+bar charts -> for comparision of multiple types
+table
+heat map -> 
+
+success ratio -> sum(2XX)/total
+
+sum(rate(http_request_duration_seconds_count{job="backend", status_code=~"2.."}[5m])) / sum(rate(http_request_duration_seconds_count{job="backend"}[5m]))
+
+topk(5, sum by (route))
+
+Request rate over time by route -> last 5min how many requests by route
